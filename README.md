@@ -7,7 +7,7 @@ API REST para gestión de finanzas personales construida con **FastAPI** y **Pos
 - 🔐 Autenticación JWT segura
 - 💰 Gestión de cuentas y transacciones
 - 📊 Dashboard con análisis financieros
-- 📈 Presupuestos y metas de ahorro
+- 📈 Presupuestos y metas de ahorro 
 - 📝 Categorización de gastos
 - 🎯 Gestión de cobros
 

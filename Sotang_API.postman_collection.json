@@ -1,0 +1,962 @@
+{
+  "info": {
+    "name": "Sotang API",
+    "description": "Colección MVP — Auth · Accounts · Categories · Budgets · Goals\n\n## Setup\n1. Importa también el **environment** `Sotang_Local.postman_environment.json`.\n2. Ejecuta **Auth / Register** o **Auth / Login** — el `accessToken` y `refreshToken` se guardan automáticamente en el environment.\n3. Todos los endpoints autenticados usan `{{accessToken}}` en el header `Authorization`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "event": [],
+  "item": [
+
+    {
+      "name": "Auth",
+      "description": "Registro, login, refresh y logout. Login y Register guardan el token automáticamente.",
+      "item": [
+
+        {
+          "name": "Register",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const res = pm.response.json();",
+                "if (res.accessToken) {",
+                "  pm.environment.set('accessToken',  res.accessToken);",
+                "  pm.environment.set('refreshToken', res.refreshToken);",
+                "  pm.environment.set('userId',       res.user.id);",
+                "  console.log('✅ Tokens guardados. userId:', res.user.id);",
+                "}"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/register", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Jefferson Palma\",\n  \"email\": \"jeff@sotang.app\",\n  \"password\": \"miPassword123\",\n  \"timezone\": \"America/Guayaquil\"\n}"
+            },
+            "description": "Crea un usuario nuevo y devuelve accessToken (15 min) + refreshToken (30 días)."
+          }
+        },
+
+        {
+          "name": "Login",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const res = pm.response.json();",
+                "if (res.accessToken) {",
+                "  pm.environment.set('accessToken',  res.accessToken);",
+                "  pm.environment.set('refreshToken', res.refreshToken);",
+                "  pm.environment.set('userId',       res.user.id);",
+                "  console.log('✅ Tokens guardados. userId:', res.user.id);",
+                "}"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"jeff@sotang.app\",\n  \"password\": \"miPassword123\"\n}"
+            },
+            "description": "Autentica al usuario. Los tokens se guardan automáticamente en el environment."
+          }
+        },
+
+        {
+          "name": "Refresh Token",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const res = pm.response.json();",
+                "if (res.accessToken) {",
+                "  pm.environment.set('accessToken',  res.accessToken);",
+                "  pm.environment.set('refreshToken', res.refreshToken);",
+                "  console.log('✅ Token renovado');",
+                "}"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/refresh", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","refresh"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "description": "Rota el refreshToken y emite un nuevo accessToken. El token anterior queda revocado."
+          }
+        },
+
+        {
+          "name": "Logout",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/auth/logout", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","logout"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "description": "Revoca el refreshToken. Requiere accessToken en el header."
+          }
+        }
+
+      ]
+    },
+
+    {
+      "name": "Accounts",
+      "description": "Cuentas bancarias, tarjetas de crédito, cripto y ahorros virtuales.",
+      "item": [
+
+        {
+          "name": "Create — Cuenta banco",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const res = pm.response.json();",
+                "if (res.id) pm.environment.set('accountId', res.id);",
+                "console.log('accountId guardado:', res.id);"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","accounts"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Banco Guayaquil\",\n  \"tipo\": \"banco\",\n  \"moneda\": \"USD\",\n  \"saldoInicial\": 1200.50,\n  \"color\": \"#0ea5e9\",\n  \"icono\": \"bank\",\n  \"incluirEnTotal\": true,\n  \"orden\": 0,\n  \"notas\": \"Cuenta corriente principal\"\n}"
+            },
+            "description": "Crea una cuenta bancaria básica. El ID se guarda en `{{accountId}}`."
+          }
+        },
+
+        {
+          "name": "Create — Tarjeta de crédito (Diners)",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const res = pm.response.json();",
+                "if (res.id) pm.environment.set('cardAccountId', res.id);",
+                "console.log('cardAccountId guardado:', res.id);"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","accounts"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Diners Club\",\n  \"tipo\": \"tarjeta_credito\",\n  \"moneda\": \"USD\",\n  \"saldoInicial\": 0,\n  \"color\": \"#8b5cf6\",\n  \"icono\": \"credit-card\",\n  \"incluirEnTotal\": false,\n  \"orden\": 1,\n  \"tarjeta\": {\n    \"cupoTotal\": 900,\n    \"fechaCorte\": 15,\n    \"fechaPago\": 5,\n    \"banco\": \"Diners Club\",\n    \"ultimos4\": \"1234\",\n    \"tasaInteresAnual\": 16.77\n  }\n}"
+            },
+            "description": "Crea tarjeta con sub-config (cupo, fechas de corte y pago, tasa de interés). El ID se guarda en `{{cardAccountId}}`."
+          }
+        },
+
+        {
+          "name": "Create — Cuenta efectivo",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","accounts"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Efectivo\",\n  \"tipo\": \"efectivo\",\n  \"moneda\": \"USD\",\n  \"saldoInicial\": 150,\n  \"color\": \"#22c55e\",\n  \"icono\": \"wallet\",\n  \"incluirEnTotal\": true,\n  \"orden\": 2\n}"
+            }
+          }
+        },
+
+        {
+          "name": "Create — Ahorro cuenta",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","accounts"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Produfuturo Pichincha\",\n  \"tipo\": \"ahorro_cuenta\",\n  \"moneda\": \"USD\",\n  \"saldoInicial\": 500,\n  \"color\": \"#f59e0b\",\n  \"icono\": \"piggy-bank\",\n  \"incluirEnTotal\": true,\n  \"orden\": 3\n}"
+            }
+          }
+        },
+
+        {
+          "name": "Create — Cripto (Bitcoin)",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const res = pm.response.json();",
+                "if (res.id) pm.environment.set('cryptoAccountId', res.id);",
+                "console.log('cryptoAccountId guardado:', res.id);"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","accounts"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Bitcoin\",\n  \"tipo\": \"cripto\",\n  \"moneda\": \"USD\",\n  \"saldoInicial\": 0,\n  \"color\": \"#f97316\",\n  \"icono\": \"bitcoin\",\n  \"incluirEnTotal\": true,\n  \"orden\": 5,\n  \"cripto\": {\n    \"simbolo\": \"BTC\",\n    \"coingeckoId\": \"bitcoin\",\n    \"cantidad\": 0.0012,\n    \"precioCompraPromedio\": 65000\n  }\n}"
+            },
+            "description": "Crea cuenta cripto con sub-config de símbolo CoinGecko, cantidad y precio de compra promedio."
+          }
+        },
+
+        {
+          "name": "Create — Ahorro virtual (sobre cuenta real)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","accounts"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Fondo emergencia (virtual)\",\n  \"tipo\": \"ahorro_virtual\",\n  \"moneda\": \"USD\",\n  \"saldoInicial\": 700,\n  \"color\": \"#6366f1\",\n  \"icono\": \"shield\",\n  \"incluirEnTotal\": false,\n  \"orden\": 4,\n  \"ahorroVirtual\": {\n    \"cuentaPadreId\": \"{{accountId}}\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Crea un sobre de ahorro virtual que vive dentro de `{{accountId}}` (cuenta Banco Guayaquil). Requiere haber creado la cuenta banco primero."
+          }
+        },
+
+        {
+          "name": "List accounts",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/accounts", "host": ["{{baseUrl}}"], "path": ["api","v1","accounts"] }
+          }
+        },
+
+        {
+          "name": "Get account by ID",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","accounts","{{accountId}}"] }
+          }
+        },
+
+        {
+          "name": "Get financial summary",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/accounts/summary", "host": ["{{baseUrl}}"], "path": ["api","v1","accounts","summary"] },
+            "description": "Total en USD + desglose por tipo de cuenta."
+          }
+        },
+
+        {
+          "name": "Update account",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","accounts","{{accountId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Banco Guayaquil (principal)\",\n  \"color\": \"#0284c7\",\n  \"notas\": \"Cuenta corriente — salario mensual\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "Delete (soft) account",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/api/v1/accounts/{{accountId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","accounts","{{accountId}}"] },
+            "description": "Soft-delete: marca activa=false. Los datos históricos se conservan."
+          }
+        }
+
+      ]
+    },
+
+    {
+      "name": "Categories",
+      "description": "Categorías y subcategorías para clasificar transacciones.",
+      "item": [
+
+        {
+          "name": "Create — Categoría gasto",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const res = pm.response.json();",
+                "if (res.id) pm.environment.set('categoryId', res.id);",
+                "console.log('categoryId guardado:', res.id);"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/categories", "host": ["{{baseUrl}}"], "path": ["api","v1","categories"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Alimentación\",\n  \"tipo\": \"gasto\",\n  \"color\": \"#22c55e\",\n  \"icono\": \"utensils\",\n  \"orden\": 0\n}"
+            }
+          }
+        },
+
+        {
+          "name": "Create — Subcategoría",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const res = pm.response.json();",
+                "if (res.id) pm.environment.set('subCategoryId', res.id);",
+                "console.log('subCategoryId guardado:', res.id);"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/categories", "host": ["{{baseUrl}}"], "path": ["api","v1","categories"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Supermercado\",\n  \"tipo\": \"gasto\",\n  \"color\": \"#86efac\",\n  \"icono\": \"shopping-cart\",\n  \"parentId\": \"{{categoryId}}\",\n  \"orden\": 0\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Crea subcategoría dentro de Alimentación. Requiere haber creado la categoría padre primero."
+          }
+        },
+
+        {
+          "name": "Create — Categoría ingreso",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/categories", "host": ["{{baseUrl}}"], "path": ["api","v1","categories"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Salario\",\n  \"tipo\": \"ingreso\",\n  \"color\": \"#6366f1\",\n  \"icono\": \"briefcase\",\n  \"orden\": 0\n}"
+            }
+          }
+        },
+
+        {
+          "name": "List categories",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/categories", "host": ["{{baseUrl}}"], "path": ["api","v1","categories"] },
+            "description": "Retorna categorías del sistema + propias del usuario."
+          }
+        },
+
+        {
+          "name": "Get category by ID",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/categories/{{categoryId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","categories","{{categoryId}}"] }
+          }
+        },
+
+        {
+          "name": "Update category",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/categories/{{categoryId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","categories","{{categoryId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Comida y bebida\",\n  \"color\": \"#16a34a\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "Delete (soft) category",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/api/v1/categories/{{categoryId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","categories","{{categoryId}}"] }
+          }
+        }
+
+      ]
+    },
+
+    {
+      "name": "Budgets",
+      "description": "Presupuestos por categoría y período con seguimiento de gasto real.",
+      "item": [
+
+        {
+          "name": "Create budget",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const res = pm.response.json();",
+                "if (res.id) pm.environment.set('budgetId', res.id);",
+                "console.log('budgetId guardado:', res.id);"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/budgets", "host": ["{{baseUrl}}"], "path": ["api","v1","budgets"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoriaId\": \"{{categoryId}}\",\n  \"nombre\": \"Alimentación junio\",\n  \"monto\": 500,\n  \"periodo\": \"mensual\",\n  \"fechaInicio\": \"2026-06-01\",\n  \"fechaFin\": \"2026-06-30\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Requiere `{{categoryId}}` (creado en la carpeta Categories)."
+          }
+        },
+
+        {
+          "name": "Create budget — sin fecha fin (abierto)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/budgets", "host": ["{{baseUrl}}"], "path": ["api","v1","budgets"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoriaId\": \"{{categoryId}}\",\n  \"nombre\": \"Transporte recurrente\",\n  \"monto\": 120,\n  \"periodo\": \"mensual\",\n  \"fechaInicio\": \"2026-06-01\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "List budgets (con gasto real)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/budgets", "host": ["{{baseUrl}}"], "path": ["api","v1","budgets"] },
+            "description": "Incluye `gastoActual`, `porcentaje`, `enAlerta` (≥80%) y `excedido` (≥100%) por presupuesto."
+          }
+        },
+
+        {
+          "name": "Get current month status",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/budgets/current-status", "host": ["{{baseUrl}}"], "path": ["api","v1","budgets","current-status"] },
+            "description": "Resumen consolidado del mes actual: total presupuestado vs. total gastado."
+          }
+        },
+
+        {
+          "name": "Get budget by ID",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/budgets/{{budgetId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","budgets","{{budgetId}}"] }
+          }
+        },
+
+        {
+          "name": "Update budget",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/budgets/{{budgetId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","budgets","{{budgetId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monto\": 600,\n  \"nombre\": \"Alimentación junio (ajustado)\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "Delete (soft) budget",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/api/v1/budgets/{{budgetId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","budgets","{{budgetId}}"] }
+          }
+        }
+
+      ]
+    },
+
+    {
+      "name": "Goals",
+      "description": "Metas de ahorro con progreso, aportes y días restantes.",
+      "item": [
+
+        {
+          "name": "Create goal",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const res = pm.response.json();",
+                "if (res.id) pm.environment.set('goalId', res.id);",
+                "console.log('goalId guardado:', res.id);"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/goals", "host": ["{{baseUrl}}"], "path": ["api","v1","goals"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Fondo de emergencia\",\n  \"descripcion\": \"6 meses de gastos básicos cubiertos (~$7000)\",\n  \"montoObjetivo\": 7000,\n  \"moneda\": \"USD\",\n  \"fechaObjetivo\": \"2026-12-31\",\n  \"color\": \"#10b981\",\n  \"icono\": \"shield\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "Create goal — Viaje",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/goals", "host": ["{{baseUrl}}"], "path": ["api","v1","goals"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Viaje a Colombia\",\n  \"montoObjetivo\": 1200,\n  \"moneda\": \"USD\",\n  \"fechaObjetivo\": \"2027-03-01\",\n  \"color\": \"#f59e0b\",\n  \"icono\": \"plane\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "List goals",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/goals", "host": ["{{baseUrl}}"], "path": ["api","v1","goals"] },
+            "description": "Incluye `porcentaje` completado y `diasRestantes` hasta la fecha objetivo."
+          }
+        },
+
+        {
+          "name": "Get goal by ID",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/goals/{{goalId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","goals","{{goalId}}"] }
+          }
+        },
+
+        {
+          "name": "Update goal",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/goals/{{goalId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","goals","{{goalId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Fondo de emergencia 2026\",\n  \"montoObjetivo\": 8000,\n  \"fechaObjetivo\": \"2026-12-31\"\n}"
+            }
+          }
+        },
+
+        {
+          "name": "Add contribution",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const res = pm.response.json();",
+                "if (res.contribution) {",
+                "  pm.environment.set('contributionId', res.contribution.id);",
+                "  console.log('completada:', res.completada, '| montoActual:', res.montoActual);",
+                "}"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/goals/{{goalId}}/contributions", "host": ["{{baseUrl}}"], "path": ["api","v1","goals","{{goalId}}","contributions"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monto\": 500,\n  \"nota\": \"Sueldo junio — parte ahorro\",\n  \"fecha\": \"2026-06-29\"\n}"
+            },
+            "description": "Registra aporte positivo. Si el total alcanza `montoObjetivo`, la meta se marca como `completada: true` automáticamente."
+          }
+        },
+
+        {
+          "name": "Add contribution — retiro (negativo)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/goals/{{goalId}}/contributions", "host": ["{{baseUrl}}"], "path": ["api","v1","goals","{{goalId}}","contributions"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monto\": -200,\n  \"nota\": \"Retiro para emergencia médica\",\n  \"fecha\": \"2026-06-29\"\n}"
+            },
+            "description": "Monto negativo para registrar un retiro de la meta."
+          }
+        },
+
+        {
+          "name": "List contributions",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/goals/{{goalId}}/contributions", "host": ["{{baseUrl}}"], "path": ["api","v1","goals","{{goalId}}","contributions"] }
+          }
+        },
+
+        {
+          "name": "Delete goal",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/api/v1/goals/{{goalId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","goals","{{goalId}}"] },
+            "description": "Hard-delete. Elimina la meta y todos sus aportes. Irreversible."
+          }
+        }
+
+      ]
+    },
+
+    {
+      "name": "Transactions",
+      "description": "Ingresos, gastos y transferencias. Actualiza saldos automáticamente.",
+      "item": [
+        {
+          "name": "Create — Gasto (con IVA)",
+          "event": [{ "listen": "test", "script": { "exec": ["const r = pm.response.json(); if (r.id) pm.environment.set('transactionId', r.id);"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/transactions", "host": ["{{baseUrl}}"], "path": ["api","v1","transactions"] },
+            "body": { "mode": "raw", "raw": "{\n  \"tipo\": \"gasto\",\n  \"monto\": 57.50,\n  \"categoriaId\": \"{{categoryId}}\",\n  \"cuentaId\": \"{{accountId}}\",\n  \"fecha\": \"2026-06-29\",\n  \"descripcion\": \"Súper La Favorita\",\n  \"incluyeIva\": true,\n  \"canal\": \"mobile\"\n}" }
+          }
+        },
+        {
+          "name": "Create — Ingreso",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/transactions", "host": ["{{baseUrl}}"], "path": ["api","v1","transactions"] },
+            "body": { "mode": "raw", "raw": "{\n  \"tipo\": \"ingreso\",\n  \"monto\": 2500,\n  \"categoriaId\": \"{{categoryId}}\",\n  \"cuentaId\": \"{{accountId}}\",\n  \"fecha\": \"2026-06-01\",\n  \"descripcion\": \"Sueldo junio\"\n}" }
+          }
+        },
+        {
+          "name": "Create — Transferencia entre cuentas",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/transactions", "host": ["{{baseUrl}}"], "path": ["api","v1","transactions"] },
+            "body": { "mode": "raw", "raw": "{\n  \"tipo\": \"transferencia\",\n  \"monto\": 200,\n  \"categoriaId\": \"{{categoryId}}\",\n  \"cuentaId\": \"{{accountId}}\",\n  \"cuentaDestinoId\": \"{{cardAccountId}}\",\n  \"fecha\": \"2026-06-29\",\n  \"descripcion\": \"Pago tarjeta Diners\"\n}" }
+          }
+        },
+        {
+          "name": "List transactions",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/transactions?page=1&limit=30", "host": ["{{baseUrl}}"], "path": ["api","v1","transactions"], "query": [{"key":"page","value":"1"},{"key":"limit","value":"30"}] }
+          }
+        },
+        {
+          "name": "List transactions — filtro por tipo y fecha",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/transactions?tipo=gasto&desde=2026-06-01&hasta=2026-06-30", "host": ["{{baseUrl}}"], "path": ["api","v1","transactions"], "query": [{"key":"tipo","value":"gasto"},{"key":"desde","value":"2026-06-01"},{"key":"hasta","value":"2026-06-30"}] }
+          }
+        },
+        {
+          "name": "Monthly summary",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/transactions/summary?year=2026&month=6", "host": ["{{baseUrl}}"], "path": ["api","v1","transactions","summary"], "query": [{"key":"year","value":"2026"},{"key":"month","value":"6"}] }
+          }
+        },
+        {
+          "name": "Get transaction by ID",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/transactions/{{transactionId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","transactions","{{transactionId}}"] }
+          }
+        },
+        {
+          "name": "Update transaction",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/transactions/{{transactionId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","transactions","{{transactionId}}"] },
+            "body": { "mode": "raw", "raw": "{\n  \"descripcion\": \"Súper La Favorita (actualizado)\",\n  \"notas\": \"Compras de la semana\"\n}" }
+          }
+        },
+        {
+          "name": "Anular transacción (revierte saldo)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/transactions/{{transactionId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","transactions","{{transactionId}}"] },
+            "body": { "mode": "raw", "raw": "{\n  \"estado\": \"anulada\"\n}" },
+            "description": "Cambia estado a anulada — revierte automáticamente el saldo de la cuenta."
+          }
+        },
+        {
+          "name": "Delete transaction",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/api/v1/transactions/{{transactionId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","transactions","{{transactionId}}"] }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Users",
+      "description": "Perfil, settings, preferencias de notificación y tokens FCM.",
+      "item": [
+        {
+          "name": "Get profile (/me)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/users/me", "host": ["{{baseUrl}}"], "path": ["api","v1","users","me"] }
+          }
+        },
+        {
+          "name": "Update profile",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/users/me", "host": ["{{baseUrl}}"], "path": ["api","v1","users","me"] },
+            "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Jefferson Palma\",\n  \"timezone\": \"America/Guayaquil\",\n  \"modoUi\": \"dark\"\n}" }
+          }
+        },
+        {
+          "name": "Update settings",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/users/me/settings", "host": ["{{baseUrl}}"], "path": ["api","v1","users","me","settings"] },
+            "body": { "mode": "raw", "raw": "{\n  \"ivaPorcentaje\": 15,\n  \"alertaPresupuestoPct\": 80,\n  \"diasNotifCorte\": 2,\n  \"diaInicioSemana\": 1\n}" }
+          }
+        },
+        {
+          "name": "Update notif pref — corte tarjeta",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/users/me/notifications/corte_tarjeta_dia_antes", "host": ["{{baseUrl}}"], "path": ["api","v1","users","me","notifications","corte_tarjeta_dia_antes"] },
+            "body": { "mode": "raw", "raw": "{\n  \"canalEmail\": false,\n  \"canalTelegram\": true,\n  \"canalPush\": true\n}" }
+          }
+        },
+        {
+          "name": "Register FCM token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/users/me/fcm-tokens", "host": ["{{baseUrl}}"], "path": ["api","v1","users","me","fcm-tokens"] },
+            "body": { "mode": "raw", "raw": "{\n  \"token\": \"fGxB3abc123exampleFCMtoken\"\n}" }
+          }
+        },
+        {
+          "name": "Delete FCM token",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/users/me/fcm-tokens", "host": ["{{baseUrl}}"], "path": ["api","v1","users","me","fcm-tokens"] },
+            "body": { "mode": "raw", "raw": "{\n  \"token\": \"fGxB3abc123exampleFCMtoken\"\n}" }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Patrimony",
+      "description": "Activos, pasivos, patrimonio neto y snapshots Equifax.",
+      "item": [
+        {
+          "name": "Net worth summary",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/v1/patrimony/net-worth", "host": ["{{baseUrl}}"], "path": ["api","v1","patrimony","net-worth"] }
+          }
+        },
+        {
+          "name": "Create asset — Inmueble",
+          "event": [{ "listen": "test", "script": { "exec": ["const r = pm.response.json(); if (r.id) pm.environment.set('assetId', r.id);"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/patrimony/assets", "host": ["{{baseUrl}}"], "path": ["api","v1","patrimony","assets"] },
+            "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Apartamento Urdesa\",\n  \"tipo\": \"inmueble\",\n  \"valorActual\": 45000,\n  \"descripcion\": \"Departamento 2 dormitorios, alquilado\",\n  \"fechaAdquis\": \"2022-03-15\"\n}" }
+          }
+        },
+        {
+          "name": "Create asset — Electrónico",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/patrimony/assets", "host": ["{{baseUrl}}"], "path": ["api","v1","patrimony","assets"] },
+            "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"MacBook Pro M3\",\n  \"tipo\": \"electronico\",\n  \"valorActual\": 2800,\n  \"fechaAdquis\": \"2024-01-10\"\n}" }
+          }
+        },
+        { "name": "List assets", "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/v1/patrimony/assets", "host": ["{{baseUrl}}"], "path": ["api","v1","patrimony","assets"] } } },
+        { "name": "Get asset by ID", "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/v1/patrimony/assets/{{assetId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","patrimony","assets","{{assetId}}"] } } },
+        {
+          "name": "Update asset",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/patrimony/assets/{{assetId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","patrimony","assets","{{assetId}}"] },
+            "body": { "mode": "raw", "raw": "{\n  \"valorActual\": 47000,\n  \"descripcion\": \"Revalorización 2026\"\n}" }
+          }
+        },
+        { "name": "Delete asset", "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/api/v1/patrimony/assets/{{assetId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","patrimony","assets","{{assetId}}"] } } },
+        {
+          "name": "Create liability — Préstamo auto",
+          "event": [{ "listen": "test", "script": { "exec": ["const r = pm.response.json(); if (r.id) pm.environment.set('liabilityId', r.id);"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/patrimony/liabilities", "host": ["{{baseUrl}}"], "path": ["api","v1","patrimony","liabilities"] },
+            "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Crédito auto Pichincha\",\n  \"tipo\": \"prestamo_auto\",\n  \"saldoActual\": 8500,\n  \"cuotaMensual\": 350,\n  \"tasaAnual\": 9.5,\n  \"fechaInicio\": \"2024-06-01\",\n  \"fechaFin\": \"2027-06-01\",\n  \"entidad\": \"Banco Pichincha\"\n}" }
+          }
+        },
+        { "name": "List liabilities", "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/v1/patrimony/liabilities", "host": ["{{baseUrl}}"], "path": ["api","v1","patrimony","liabilities"] } } },
+        { "name": "Get liability by ID", "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/v1/patrimony/liabilities/{{liabilityId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","patrimony","liabilities","{{liabilityId}}"] } } },
+        {
+          "name": "Update liability (nuevo saldo)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/patrimony/liabilities/{{liabilityId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","patrimony","liabilities","{{liabilityId}}"] },
+            "body": { "mode": "raw", "raw": "{\n  \"saldoActual\": 8150\n}" }
+          }
+        },
+        { "name": "Delete liability", "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/api/v1/patrimony/liabilities/{{liabilityId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","patrimony","liabilities","{{liabilityId}}"] } } },
+        {
+          "name": "Register Equifax report",
+          "event": [{ "listen": "test", "script": { "exec": ["const r = pm.response.json(); if (r.id) pm.environment.set('equifaxId', r.id);"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/v1/patrimony/equifax", "host": ["{{baseUrl}}"], "path": ["api","v1","patrimony","equifax"] },
+            "body": { "mode": "raw", "raw": "{\n  \"score\": 782,\n  \"capacidadPago\": 1200,\n  \"deudaTotal\": 8500,\n  \"fechaConsulta\": \"2026-06-29\",\n  \"rawJson\": \"{\\\"score\\\": 782, \\\"detalle\\\": \\\"simulado\\\"}\"\n}" }
+          }
+        },
+        { "name": "List Equifax reports", "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/v1/patrimony/equifax", "host": ["{{baseUrl}}"], "path": ["api","v1","patrimony","equifax"] } } }
+      ]
+    },
+
+    {
+      "name": "Receivables",
+      "description": "Cobros (dinero que te deben) y Deudas (dinero que debes).",
+      "item": [
+        {
+          "name": "── COBROS ──",
+          "item": [
+            {
+              "name": "Create cobro",
+              "event": [{ "listen": "test", "script": { "exec": ["const r = pm.response.json(); if (r.id) pm.environment.set('receivableId', r.id);"] } }],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/receivables", "host": ["{{baseUrl}}"], "path": ["api","v1","receivables"] },
+                "body": { "mode": "raw", "raw": "{\n  \"deudorNombre\": \"Carlos Mendoza\",\n  \"concepto\": \"Préstamo para laptop\",\n  \"montoTotal\": 500,\n  \"fechaPrestamo\": \"2026-06-01\",\n  \"fechaVencim\": \"2026-09-01\"\n}" }
+              }
+            },
+            { "name": "List cobros (todos)", "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/v1/receivables", "host": ["{{baseUrl}}"], "path": ["api","v1","receivables"] } } },
+            { "name": "List cobros — pendientes", "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/v1/receivables?estado=pendiente", "host": ["{{baseUrl}}"], "path": ["api","v1","receivables"], "query": [{"key":"estado","value":"pendiente"}] } } },
+            { "name": "Get cobro by ID", "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/v1/receivables/{{receivableId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","receivables","{{receivableId}}"] } } },
+            {
+              "name": "Add payment (parcial $250)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/receivables/{{receivableId}}/payments", "host": ["{{baseUrl}}"], "path": ["api","v1","receivables","{{receivableId}}","payments"] },
+                "body": { "mode": "raw", "raw": "{\n  \"monto\": 250,\n  \"fecha\": \"2026-07-15\",\n  \"nota\": \"Primera cuota\"\n}" }
+              }
+            },
+            {
+              "name": "Add payment (saldo restante $250 → cobrado)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/receivables/{{receivableId}}/payments", "host": ["{{baseUrl}}"], "path": ["api","v1","receivables","{{receivableId}}","payments"] },
+                "body": { "mode": "raw", "raw": "{\n  \"monto\": 250,\n  \"fecha\": \"2026-08-15\",\n  \"nota\": \"Segunda cuota — cobro completado\"\n}" }
+              }
+            },
+            { "name": "List payments of cobro", "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/v1/receivables/{{receivableId}}/payments", "host": ["{{baseUrl}}"], "path": ["api","v1","receivables","{{receivableId}}","payments"] } } },
+            {
+              "name": "Update cobro (marcar incobrable)",
+              "request": {
+                "method": "PATCH",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/receivables/{{receivableId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","receivables","{{receivableId}}"] },
+                "body": { "mode": "raw", "raw": "{\n  \"estado\": \"incobrable\",\n  \"notas\": \"No responde mensajes\"\n}" }
+              }
+            },
+            { "name": "Delete cobro", "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/api/v1/receivables/{{receivableId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","receivables","{{receivableId}}"] } } }
+          ]
+        },
+        {
+          "name": "── DEUDAS ──",
+          "item": [
+            {
+              "name": "Create deuda",
+              "event": [{ "listen": "test", "script": { "exec": ["const r = pm.response.json(); if (r.id) pm.environment.set('debtId', r.id);"] } }],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/debts", "host": ["{{baseUrl}}"], "path": ["api","v1","debts"] },
+                "body": { "mode": "raw", "raw": "{\n  \"acreedorNombre\": \"Juan Pérez\",\n  \"concepto\": \"Préstamo para arriendo\",\n  \"montoTotal\": 300,\n  \"fechaDeuda\": \"2026-06-01\",\n  \"fechaVencim\": \"2026-08-01\"\n}" }
+              }
+            },
+            { "name": "List deudas (todas)", "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/v1/debts", "host": ["{{baseUrl}}"], "path": ["api","v1","debts"] } } },
+            { "name": "List deudas — pendientes", "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/v1/debts?estado=pendiente", "host": ["{{baseUrl}}"], "path": ["api","v1","debts"], "query": [{"key":"estado","value":"pendiente"}] } } },
+            { "name": "Get deuda by ID", "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/v1/debts/{{debtId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","debts","{{debtId}}"] } } },
+            {
+              "name": "Add payment ($150 → parcial)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/debts/{{debtId}}/payments", "host": ["{{baseUrl}}"], "path": ["api","v1","debts","{{debtId}}","payments"] },
+                "body": { "mode": "raw", "raw": "{\n  \"monto\": 150,\n  \"fecha\": \"2026-07-01\",\n  \"nota\": \"Primer pago\"\n}" }
+              }
+            },
+            {
+              "name": "Add payment ($150 → pagada)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "url": { "raw": "{{baseUrl}}/api/v1/debts/{{debtId}}/payments", "host": ["{{baseUrl}}"], "path": ["api","v1","debts","{{debtId}}","payments"] },
+                "body": { "mode": "raw", "raw": "{\n  \"monto\": 150,\n  \"fecha\": \"2026-08-01\",\n  \"nota\": \"Pago final\"\n}" }
+              }
+            },
+            { "name": "List payments of deuda", "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/v1/debts/{{debtId}}/payments", "host": ["{{baseUrl}}"], "path": ["api","v1","debts","{{debtId}}","payments"] } } },
+            { "name": "Delete deuda", "request": { "method": "DELETE", "url": { "raw": "{{baseUrl}}/api/v1/debts/{{debtId}}", "host": ["{{baseUrl}}"], "path": ["api","v1","debts","{{debtId}}"] } } }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "System",
+      "description": "Health checks del servidor.",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+          }
+        },
+        {
+          "name": "Readiness check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/health/ready", "host": ["{{baseUrl}}"], "path": ["health","ready"] }
+          }
+        }
+      ]
+    }
+
+  ]
+}

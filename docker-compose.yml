@@ -1,107 +1,37 @@
-version: "3.9"
-
-# ── Sotang — docker-compose.yml ────────────────────────────────────────────────
-# Uso: docker compose up -d
-# Para producción en Raspberry Pi con Tailscale
-
 services:
-
-  # ── PostgreSQL ────────────────────────────────────────────────────────────────
-  db:
+  postgres:
     image: postgres:16-alpine
-    container_name: sotang-db
+    container_name: sotang-postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: sotang_db
       POSTGRES_USER: sotang
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: sotang_dev_pass
+      POSTGRES_DB: sotang_db
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sotang -d sotang_db"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
       retries: 5
-    networks:
-      - sotang-net
 
-  # ── Redis (broker para Celery) ────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: sotang-redis
-    command: redis-server --save 60 1 --loglevel warning
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
     volumes:
       - redis_data:/data
-    restart: unless-stopped
-    networks:
-      - sotang-net
-
-  # ── FastAPI ───────────────────────────────────────────────────────────────────
-  api:
-    build:
-      context: .
-      target: api
-    container_name: sotang-api
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    env_file: .env
-    environment:
-      DATABASE_URL: postgresql+psycopg2://sotang:${POSTGRES_PASSWORD}@db:5432/sotang_db
-      REDIS_HOST: redis
-    volumes:
-      - ./storage:/app/storage
-      - ./secrets:/app/secrets:ro
-    restart: unless-stopped
+    command: redis-server --appendonly yes
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - sotang-net
-
-  # ── Celery Worker ─────────────────────────────────────────────────────────────
-  worker:
-    build:
-      context: .
-      target: worker
-    container_name: sotang-worker
-    depends_on:
-      - db
-      - redis
-    env_file: .env
-    environment:
-      DATABASE_URL: postgresql+psycopg2://sotang:${POSTGRES_PASSWORD}@db:5432/sotang_db
-      REDIS_HOST: redis
-    volumes:
-      - ./storage:/app/storage
-      - ./secrets:/app/secrets:ro
-    restart: unless-stopped
-    networks:
-      - sotang-net
-
-  # ── Nginx ─────────────────────────────────────────────────────────────────────
-  nginx:
-    image: nginx:alpine
-    container_name: sotang-nginx
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      api:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - sotang-net
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
 volumes:
   postgres_data:
   redis_data:
-
-networks:
-  sotang-net:
-    driver: bridge
