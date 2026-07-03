@@ -19,8 +19,10 @@ export default async function transactionsRoutes(app: FastifyInstance) {
       description: `Crea un ingreso, gasto o transferencia y actualiza el saldo de la(s) cuenta(s) en la misma transacción DB.
 
 **Reglas:**
-- \`tipo=transferencia\` requiere \`cuentaDestinoId\`
-- \`incluyeIva=true\` desglosa automáticamente monto sin IVA e IVA (15%)
+- \`tipo=transferencia\` requiere \`cuentaDestinoId\` (y no admite IVA)
+- \`modoIva=incluido\`: el monto ya trae IVA y se desglosa (neto = monto/1.15; total = monto)
+- \`modoIva=adicional\` ("Aplica IVA"): el monto es la base y el IVA se suma encima (total = monto*1.15 — ej. Steam: base $59.00 → cargo real $67.85)
+- El saldo/cupo se afecta SIEMPRE por \`montoTotal\` (\`incluyeIva=true\` legado equivale a \`modoIva=incluido\`)
 - Solo transacciones con \`estado=completada\` afectan el saldo
 - \`etiquetas\` es un array de UUIDs de etiquetas existentes`,
       security: [{ bearerAuth: [] }],
@@ -41,6 +43,7 @@ export default async function transactionsRoutes(app: FastifyInstance) {
         ACCOUNT_NOT_FOUND:    [404, 'Cuenta origen no encontrada'],
         DEST_ACCOUNT_NOT_FOUND: [404, 'Cuenta destino no encontrada'],
         TRANSFER_NEEDS_DEST:  [400, 'Transferencias requieren cuentaDestinoId'],
+        IVA_NOT_ALLOWED_ON_TRANSFER: [400, 'Las transferencias no admiten cálculo de IVA'],
       };
       const [code, msg] = map[err.message] ?? [500, err.message];
       return reply.status(code).send({ statusCode: code, error: err.message, message: msg });

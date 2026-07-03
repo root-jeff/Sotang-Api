@@ -62,9 +62,11 @@ export const transactions = pgTable('transacciones', {
   usuarioId:       uuid('usuario_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   tipo:            varchar('tipo', { length: 15 }).notNull(),
   monto:           numeric('monto', { precision: 15, scale: 2 }).notNull(),
+  montoTotal:      numeric('monto_total', { precision: 15, scale: 2 }).notNull(),
   montoSinIva:     numeric('monto_sin_iva', { precision: 15, scale: 2 }),
   ivaMonto:        numeric('iva_monto', { precision: 15, scale: 2 }),
-  incluyeIva:      boolean('incluye_iva').notNull().default(false),
+  // ninguno: sin IVA · incluido: monto trae IVA, se desglosa · adicional: monto es base, IVA se suma encima
+  modoIva:         varchar('modo_iva', { length: 10 }).notNull().default('ninguno'),
   categoriaId:     uuid('categoria_id').notNull().references(() => categories.id, { onDelete: 'restrict' }),
   cuentaId:        uuid('cuenta_id').notNull().references(() => accounts.id, { onDelete: 'restrict' }),
   cuentaDestinoId: uuid('cuenta_destino_id').references(() => accounts.id, { onDelete: 'restrict' }),
@@ -81,6 +83,9 @@ export const transactions = pgTable('transacciones', {
   canalCk:      check('ck_txn_canal', sql`${t.canal} IN ('web', 'mobile', 'telegram', 'email')`),
   estadoCk:     check('ck_txn_estado', sql`${t.estado} IN ('completada', 'pendiente', 'en_proceso', 'anulada')`),
   montoCk:      check('ck_txn_monto', sql`${t.monto} > 0`),
+  montoTotalCk: check('ck_txn_monto_total', sql`${t.montoTotal} > 0`),
+  modoIvaCk:    check('ck_txn_modo_iva', sql`${t.modoIva} IN ('ninguno', 'incluido', 'adicional')`),
+  ivaTotalCk:   check('ck_txn_iva_total', sql`${t.modoIva} = 'ninguno' OR (${t.montoSinIva} + ${t.ivaMonto} = ${t.montoTotal})`),
   cuentasCk:    check('ck_txn_cuentas_distintas', sql`${t.cuentaDestinoId} IS NULL OR ${t.cuentaDestinoId} != ${t.cuentaId}`),
 }));
 
