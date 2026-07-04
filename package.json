@@ -9,7 +9,10 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:studio": "drizzle-kit studio",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "db:seed": "tsx src/db/seed.ts",
+    "dev:workers": "tsx watch src/workers/index.ts",
+    "start:workers": "tsx src/workers/index.ts"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.1",

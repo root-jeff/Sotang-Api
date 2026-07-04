@@ -20,6 +20,16 @@ const CanalTxn = Type.Union([
   Type.Literal('email'),
 ]);
 
+export const ModoIva = Type.Union([
+  Type.Literal('ninguno'),
+  Type.Literal('incluido'),
+  Type.Literal('adicional'),
+], {
+  description:
+    'ninguno: sin cálculo de IVA · incluido: el monto ya trae IVA y se desglosa (neto = monto/1.15) · ' +
+    'adicional ("Aplica IVA"): el monto es la base y el IVA se suma encima (total = monto*1.15, ej. compras digitales con tarjeta)',
+});
+
 export const CreateTransactionBody = Type.Object({
   tipo:            TipoTxn,
   monto:           Type.Number({ minimum: 0.01, example: 45.50 }),
@@ -32,8 +42,13 @@ export const CreateTransactionBody = Type.Object({
   canal:           Type.Optional(CanalTxn),
   // Transferencias
   cuentaDestinoId: Type.Optional(Type.String({ format: 'uuid', description: 'Requerido si tipo=transferencia' })),
-  // IVA (Ecuador)
-  incluyeIva:      Type.Optional(Type.Boolean({ default: false, description: 'Si el monto ya incluye IVA (15%)' })),
+  // IVA (Ecuador) — dos modos
+  modoIva:         Type.Optional(ModoIva),
+  incluyeIva:      Type.Optional(Type.Boolean({
+    default: false,
+    description: 'DEPRECATED: usar modoIva. true equivale a modoIva=incluido',
+    deprecated: true,
+  })),
   // Etiquetas
   etiquetas:       Type.Optional(Type.Array(Type.String({ format: 'uuid' }), { description: 'IDs de etiquetas a asociar' })),
 }, { $id: 'CreateTransactionBody' });
@@ -42,10 +57,11 @@ export const TransactionResponse = Type.Object({
   id:              Type.String({ format: 'uuid' }),
   usuarioId:       Type.String({ format: 'uuid' }),
   tipo:            Type.String(),
-  monto:           Type.String(),
+  monto:           Type.String({ description: 'Monto ingresado (base si modoIva=adicional)' }),
+  montoTotal:      Type.String({ description: 'Monto real cargado a la cuenta/cupo' }),
   montoSinIva:     Type.Union([Type.String(), Type.Null()]),
   ivaMonto:        Type.Union([Type.String(), Type.Null()]),
-  incluyeIva:      Type.Boolean(),
+  modoIva:         Type.String({ description: 'ninguno | incluido | adicional' }),
   categoriaId:     Type.String({ format: 'uuid' }),
   cuentaId:        Type.String({ format: 'uuid' }),
   cuentaDestinoId: Type.Union([Type.String({ format: 'uuid' }), Type.Null()]),

@@ -4,8 +4,33 @@ import {
   transactions, transactionTags, accounts, categories,
 } from '../../db/schema/index';
 import type { CreateTransactionBodyType, ListTransactionsQueryType } from './transactions.schema';
+import { notificationsQueue, budgetQueue, invalidateDashboard } from '../../core/redis';
 
 const IVA_RATE = 0.15;
+
+type ModoIva = 'ninguno' | 'incluido' | 'adicional';
+
+/**
+ * Calcula el desglose tributario según el modo:
+ * - incluido:  el monto ya trae IVA → neto = monto/1.15; total = monto
+ * - adicional: el monto es la base → iva = monto*0.15; total = neto + iva (cargo real a la cuenta)
+ * - ninguno:   total = monto, sin desglose
+ * El iva se deriva por resta/suma del neto redondeado para que neto + iva = total exacto (constraint DB).
+ */
+export function computeIva(monto: number, modo: ModoIva) {
+  if (modo === 'incluido') {
+    const neto = Number((monto / (1 + IVA_RATE)).toFixed(2));
+    const iva  = Number((monto - neto).toFixed(2));
+    return { montoSinIva: neto.toFixed(2), ivaMonto: iva.toFixed(2), montoTotal: monto.toFixed(2) };
+  }
+  if (modo === 'adicional') {
+    const neto  = Number(monto.toFixed(2));
+    const iva   = Number((neto * IVA_RATE).toFixed(2));
+    const total = Number((neto + iva).toFixed(2));
+    return { montoSinIva: neto.toFixed(2), ivaMonto: iva.toFixed(2), montoTotal: total.toFixed(2) };
+  }
+  return { montoSinIva: null, ivaMonto: null, montoTotal: monto.toFixed(2) };
+}
 
 export class TransactionsService {
   private get db() { return getDb(); }
@@ -32,24 +57,22 @@ export class TransactionsService {
       cuentaDestino = dest;
     }
 
-    // Compute IVA breakdown
-    let montoSinIva: string | null = null;
-    let ivaMonto: string | null = null;
-    if (data.incluyeIva) {
-      const sinIva = data.monto / (1 + IVA_RATE);
-      const iva    = data.monto - sinIva;
-      montoSinIva  = sinIva.toFixed(2);
-      ivaMonto     = iva.toFixed(2);
+    // Compute IVA breakdown (modoIva nuevo; incluyeIva legado equivale a 'incluido')
+    const modoIva: ModoIva = data.modoIva ?? (data.incluyeIva ? 'incluido' : 'ninguno');
+    if (modoIva !== 'ninguno' && data.tipo === 'transferencia') {
+      throw new Error('IVA_NOT_ALLOWED_ON_TRANSFER');
     }
+    const { montoSinIva, ivaMonto, montoTotal } = computeIva(data.monto, modoIva);
 
     return this.db.transaction(async (tx) => {
       const [txn] = await tx.insert(transactions).values({
         usuarioId,
         tipo:            data.tipo,
         monto:           String(data.monto),
+        montoTotal,
         montoSinIva,
         ivaMonto,
-        incluyeIva:      data.incluyeIva ?? false,
+        modoIva,
         categoriaId:     data.categoriaId,
         cuentaId:        data.cuentaId,
         cuentaDestinoId: data.cuentaDestinoId,
@@ -58,6 +81,7 @@ export class TransactionsService {
         canal:           data.canal ?? 'mobile',
         estado:          data.estado ?? 'completada',
         notas:           data.notas,
+        recurrenteId:    (data as { recurrenteId?: string }).recurrenteId,
       }).returning();
 
       // Attach tags
@@ -67,14 +91,34 @@ export class TransactionsService {
         );
       }
 
-      // Update account balances (only for completada)
+      // Update account balances (only for completada) — SIEMPRE por montoTotal,
+      // que en modo 'adicional' incluye el IVA cobrado encima del precio base
+      const totalNum = parseFloat(montoTotal);
       if (txn.estado === 'completada') {
-        await this.applyBalanceDelta(tx, data.cuentaId, data.monto, data.tipo === 'ingreso' ? '+' : '-');
+        await this.applyBalanceDelta(tx, data.cuentaId, totalNum, data.tipo === 'ingreso' ? '+' : '-');
         if (data.tipo === 'transferencia' && data.cuentaDestinoId) {
-          await this.applyBalanceDelta(tx, data.cuentaDestinoId, data.monto, '+');
+          await this.applyBalanceDelta(tx, data.cuentaDestinoId, totalNum, '+');
         }
       }
 
+      return txn;
+    }).then(async (txn) => {
+      // Patrón Observer: encolar eventos fuera de la transacción ACID (< 1 ms) y sin bloquear la respuesta
+      const enqueues = Promise.allSettled([
+        notificationsQueue.add('transaction.created', {
+          usuarioId,
+          evento: 'transaccion_creada',
+          titulo: `${data.tipo === 'ingreso' ? 'Ingreso' : data.tipo === 'gasto' ? 'Gasto' : 'Transferencia'} registrado`,
+          cuerpo: `${data.descripcion ?? data.tipo}: $${txn.montoTotal}`,
+        }),
+        budgetQueue.add('check-budget', {
+          usuarioId,
+          categoriaId: data.categoriaId,
+          fecha: data.fecha,
+        }),
+        invalidateDashboard(usuarioId),
+      ]);
+      await enqueues; // no lanza: allSettled — una cola caída no rompe el registro
       return txn;
     });
   }
@@ -137,12 +181,13 @@ export class TransactionsService {
     if (data.estado      !== undefined) updateData.estado      = data.estado;
 
     return this.db.transaction(async (tx) => {
-      // If estado changed from completada → anulada, reverse balance
+      // If estado changed from completada → anulada, reverse balance (por montoTotal)
       if (data.estado && current.estado === 'completada' && data.estado === 'anulada') {
+        const total = parseFloat(current.montoTotal);
         const reverseOp = current.tipo === 'ingreso' ? '-' : '+';
-        await this.applyBalanceDelta(tx, current.cuentaId, parseFloat(current.monto), reverseOp);
+        await this.applyBalanceDelta(tx, current.cuentaId, total, reverseOp);
         if (current.tipo === 'transferencia' && current.cuentaDestinoId) {
-          await this.applyBalanceDelta(tx, current.cuentaDestinoId, parseFloat(current.monto), '-');
+          await this.applyBalanceDelta(tx, current.cuentaDestinoId, total, '-');
         }
       }
 
@@ -162,12 +207,13 @@ export class TransactionsService {
     if (!current) return null;
 
     return this.db.transaction(async (tx) => {
-      // Reverse balance if completada
+      // Reverse balance if completada (por montoTotal)
       if (current.estado === 'completada') {
+        const total = parseFloat(current.montoTotal);
         const reverseOp = current.tipo === 'ingreso' ? '-' : '+';
-        await this.applyBalanceDelta(tx, current.cuentaId, parseFloat(current.monto), reverseOp);
+        await this.applyBalanceDelta(tx, current.cuentaId, total, reverseOp);
         if (current.tipo === 'transferencia' && current.cuentaDestinoId) {
-          await this.applyBalanceDelta(tx, current.cuentaDestinoId, parseFloat(current.monto), '-');
+          await this.applyBalanceDelta(tx, current.cuentaDestinoId, total, '-');
         }
       }
 
@@ -188,7 +234,7 @@ export class TransactionsService {
     const rows = await this.db
       .select({
         tipo:  transactions.tipo,
-        total: sql<string>`SUM(${transactions.monto})`,
+        total: sql<string>`SUM(${transactions.montoTotal})`,
       })
       .from(transactions)
       .where(and(
