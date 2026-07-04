@@ -4,6 +4,7 @@ import {
   transactions, transactionTags, accounts, categories,
 } from '../../db/schema/index';
 import type { CreateTransactionBodyType, ListTransactionsQueryType } from './transactions.schema';
+import { notificationsQueue, budgetQueue, invalidateDashboard } from '../../core/redis';
 
 const IVA_RATE = 0.15;
 
@@ -80,6 +81,7 @@ export class TransactionsService {
         canal:           data.canal ?? 'mobile',
         estado:          data.estado ?? 'completada',
         notas:           data.notas,
+        recurrenteId:    (data as { recurrenteId?: string }).recurrenteId,
       }).returning();
 
       // Attach tags
@@ -99,6 +101,24 @@ export class TransactionsService {
         }
       }
 
+      return txn;
+    }).then(async (txn) => {
+      // Patrón Observer: encolar eventos fuera de la transacción ACID (< 1 ms) y sin bloquear la respuesta
+      const enqueues = Promise.allSettled([
+        notificationsQueue.add('transaction.created', {
+          usuarioId,
+          evento: 'transaccion_creada',
+          titulo: `${data.tipo === 'ingreso' ? 'Ingreso' : data.tipo === 'gasto' ? 'Gasto' : 'Transferencia'} registrado`,
+          cuerpo: `${data.descripcion ?? data.tipo}: $${txn.montoTotal}`,
+        }),
+        budgetQueue.add('check-budget', {
+          usuarioId,
+          categoriaId: data.categoriaId,
+          fecha: data.fecha,
+        }),
+        invalidateDashboard(usuarioId),
+      ]);
+      await enqueues; // no lanza: allSettled — una cola caída no rompe el registro
       return txn;
     });
   }

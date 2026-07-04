@@ -47,8 +47,13 @@ export const recurringTransactions = pgTable('transacciones_recurrentes', {
   activa:           boolean('activa').notNull().default(true),
   proximaEjecucion: date('proxima_ejecucion').notNull(),
   ultimaEjecucion:  date('ultima_ejecucion'),
+  // Patrón State: configured → pending → notified → executed → (pending | terminal) / cancelled
+  estado:           varchar('estado', { length: 12 }).notNull().default('configured'),
+  modoIva:          varchar('modo_iva', { length: 10 }).notNull().default('ninguno'),
   creadoEn:         timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
+  estadoCk:     check('ck_recurrentes_estado', sql`${t.estado} IN ('configured', 'pending', 'notified', 'executed', 'cancelled')`),
+  modoIvaCk:    check('ck_recurrentes_modo_iva', sql`${t.modoIva} IN ('ninguno', 'incluido', 'adicional')`),
   tipoCk:       check('ck_recurrentes_tipo', sql`${t.tipo} IN ('ingreso', 'gasto')`),
   frecuenciaCk: check('ck_recurrentes_frecuencia', sql`${t.frecuencia} IN ('diaria', 'semanal', 'quincenal', 'mensual', 'anual')`),
   montoCk:      check('ck_recurrentes_monto', sql`${t.monto} > 0`),

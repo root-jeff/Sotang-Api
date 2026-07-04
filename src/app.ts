@@ -21,6 +21,11 @@ import goalsRoutes from './modules/goals/goals.router';
 import usersRoutes from './modules/users/users.router';
 import patrimonyRoutes from './modules/patrimony/patrimony.router';
 import receivablesRoutes from './modules/receivables/receivables.router';
+import recurringRoutes from './modules/transactions/recurring.router';
+import dashboardRoutes from './modules/dashboard/dashboard.router';
+import notificationsRoutes from './modules/notifications/notifications.router';
+import reportsRoutes from './modules/reports/reports.router';
+import backupRoutes from './modules/backup/backup.router';
 
 export async function buildApp() {
   const app = Fastify({
@@ -207,6 +212,11 @@ Usa **JWT Bearer**. El flujo es:
   await app.register(usersRoutes,        { prefix: '/api/v1/users' });
   await app.register(patrimonyRoutes,    { prefix: '/api/v1/patrimony' });
   await app.register(receivablesRoutes,  { prefix: '/api/v1' });
+  await app.register(recurringRoutes,    { prefix: '/api/v1/transactions/recurring' });
+  await app.register(dashboardRoutes,    { prefix: '/api/v1/dashboard' });
+  await app.register(notificationsRoutes, { prefix: '/api/v1/notifications' });
+  await app.register(reportsRoutes,      { prefix: '/api/v1/reports' });
+  await app.register(backupRoutes,       { prefix: '/api/v1/backup' });
 
   return app;
 }
